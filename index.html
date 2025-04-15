@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Screen Reader</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 20px; }
+    video, canvas { max-width: 100%; margin-top: 20px; }
+    pre { background: #f0f0f0; padding: 10px; border-radius: 8px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>📷 Smart Screen Scanner + Solver</h1>
+  <button id="start">Scan Screen</button>
+  <p id="status"></p>
+  <video id="video" autoplay playsinline style="display:none;"></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <p><strong>Detected Text:</strong></p>
+  <pre id="output"></pre>
+
+  <script>
+    const button = document.getElementById('start');
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const output = document.getElementById('output');
+    const status = document.getElementById('status');
+
+    button.onclick = async () => {
+      output.textContent = "";
+      status.textContent = "Requesting screen share...";
+      try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        video.srcObject = stream;
+        video.style.display = "block";
+
+        // Wait for video to load
+        await new Promise(resolve => video.onloadedmetadata = resolve);
+
+        // Draw frame to canvas
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Stop the video stream
+        stream.getTracks().forEach(track => track.stop());
+        video.style.display = "none";
+
+        // OCR with Tesseract
+        status.textContent = "Scanning for text...";
+        const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
+        let cleaned = text.trim().replace(/\n/g, ' ').replace(/[^0-9+\-*/().= ]/g, '');
+        output.textContent = `📝 Text Detected:\n${text}`;
+
+        // Try solving the problem
+        if (/^[0-9+\-*/(). =]+$/.test(cleaned)) {
+          try {
+            const problem = cleaned.split('=')[0]; // Ignore anything after "="
+            const result = eval(problem);
+            output.textContent += `\n\n✅ Answer: ${result}`;
+          } catch (e) {
+            output.textContent += `\n\n❌ Couldn't solve it.`;
+          }
+        } else {
+          output.textContent += `\n\n🤔 Not a math problem.`;
+        }
+
+        status.textContent = "Done!";
+      } catch (err) {
+        console.error(err);
+        status.textContent = "Error: " + err.message;
+      }
+    };
+  </script>
+</body>
+</html>
