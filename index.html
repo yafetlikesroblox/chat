@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Smart Screen Reader</title>
+  <title>Smart Screen Scanner + Solver</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <style>
     body { font-family: Arial; text-align: center; padding: 20px; }
@@ -11,7 +11,7 @@
   </style>
 </head>
 <body>
-  <h1>📷 Smart Screen Scanner + Solver</h1>
+  <h1>Screen Scanner + Anwser Uploader</h1>
   <button id="start">Scan Screen</button>
   <p id="status"></p>
   <video id="video" autoplay playsinline style="display:none;"></video>
@@ -31,6 +31,7 @@
       status.textContent = "Requesting screen share...";
       try {
         const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        console.log("Stream received:", stream); // Debugging line
         video.srcObject = stream;
         video.style.display = "block";
 
@@ -50,6 +51,8 @@
         // OCR with Tesseract
         status.textContent = "Scanning for text...";
         const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
+        console.log("OCR Text:", text); // Debugging line
+
         let cleaned = text.trim().replace(/\n/g, ' ').replace(/[^0-9+\-*/().= ]/g, '');
         output.textContent = `📝 Text Detected:\n${text}`;
 
@@ -68,10 +71,11 @@
 
         status.textContent = "Done!";
       } catch (err) {
-        console.error(err);
+        console.error("Error during screen capture:", err);
         status.textContent = "Error: " + err.message;
       }
     };
   </script>
 </body>
 </html>
+
