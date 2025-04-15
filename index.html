@@ -2,80 +2,84 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Smart Screen Scanner + Solver</title>
+  <title>Screen Math Scanner</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <style>
-    body { font-family: Arial; text-align: center; padding: 20px; }
-    video, canvas { max-width: 100%; margin-top: 20px; }
-    pre { background: #f0f0f0; padding: 10px; border-radius: 8px; white-space: pre-wrap; }
+    body { font-family: Arial, sans-serif; text-align: center; padding: 40px; }
+    pre { background: #f0f0f0; padding: 15px; border-radius: 10px; white-space: pre-wrap; }
+    button { padding: 12px 20px; font-size: 16px; cursor: pointer; }
   </style>
 </head>
 <body>
-  <h1>Screen Scanner + Anwser Uploader</h1>
-  <button id="start">Scan Screen</button>
-  <p id="status"></p>
-  <video id="video" autoplay playsinline style="display:none;"></video>
+  <h1>🧠 Screen Math Scanner</h1>
+  <button id="scanBtn">📸 Scan Screen</button>
+  <p id="status">Waiting...</p>
+  <pre id="result"></pre>
+
+  <video id="video" autoplay style="display:none;"></video>
   <canvas id="canvas" style="display:none;"></canvas>
-  <p><strong>Detected Text:</strong></p>
-  <pre id="output"></pre>
 
   <script>
-    const button = document.getElementById('start');
+    const scanBtn = document.getElementById('scanBtn');
+    const status = document.getElementById('status');
+    const result = document.getElementById('result');
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
-    const output = document.getElementById('output');
-    const status = document.getElementById('status');
 
-    button.onclick = async () => {
-      output.textContent = "";
-      status.textContent = "Requesting screen share...";
+    scanBtn.onclick = async () => {
+      result.textContent = "";
+      status.textContent = "🟡 Requesting screen access...";
       try {
         const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        console.log("Stream received:", stream); // Debugging line
         video.srcObject = stream;
-        video.style.display = "block";
-
-        // Wait for video to load
         await new Promise(resolve => video.onloadedmetadata = resolve);
 
-        // Draw frame to canvas
+        // Capture one frame
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Stop the video stream
+        // Stop video stream
         stream.getTracks().forEach(track => track.stop());
-        video.style.display = "none";
 
-        // OCR with Tesseract
-        status.textContent = "Scanning for text...";
-        const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
-        console.log("OCR Text:", text); // Debugging line
+        status.textContent = "🟡 Scanning for text...";
 
-        let cleaned = text.trim().replace(/\n/g, ' ').replace(/[^0-9+\-*/().= ]/g, '');
-        output.textContent = `📝 Text Detected:\n${text}`;
+        const { data } = await Tesseract.recognize(canvas, 'eng');
+        const rawText = data.text.trim();
+        result.textContent = `📝 Text Detected:\n${rawText}`;
 
-        // Try solving the problem
-        if (/^[0-9+\-*/(). =]+$/.test(cleaned)) {
-          try {
-            const problem = cleaned.split('=')[0]; // Ignore anything after "="
-            const result = eval(problem);
-            output.textContent += `\n\n✅ Answer: ${result}`;
-          } catch (e) {
-            output.textContent += `\n\n❌ Couldn't solve it.`;
-          }
-        } else {
-          output.textContent += `\n\n🤔 Not a math problem.`;
+        if (!rawText) {
+          result.textContent = "🤷 I couldn't find any text.";
+          return;
         }
 
-        status.textContent = "Done!";
+        // Clean and fix OCR text
+        let cleaned = rawText
+          .replace(/×|x|X/g, '*')    // Replace x and × with *
+          .replace(/÷|:/g, '/')      // Replace ÷ and : with /
+          .replace(/[^0-9+\-*/().= ]/g, '') // Remove weird characters
+
+        // Only use what's before the equal sign
+        const expression = cleaned.split('=')[0].trim();
+
+        if (/^[0-9+\-*/(). ]+$/.test(expression)) {
+          try {
+            const answer = eval(expression);
+            result.textContent += `\n\n✅ Solved: ${expression} = ${answer}`;
+          } catch (e) {
+            result.textContent += `\n\n⚠️ I found math but couldn't solve it.`;
+          }
+        } else {
+          result.textContent += `\n\n🤔 Doesn't look like a clean math problem.`;
+        }
+
+        status.textContent = "✅ Done!";
       } catch (err) {
-        console.error("Error during screen capture:", err);
-        status.textContent = "Error: " + err.message;
+        console.error(err);
+        status.textContent = "❌ Error: " + err.message;
       }
     };
   </script>
 </body>
 </html>
-
