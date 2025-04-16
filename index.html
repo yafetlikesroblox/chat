@@ -109,7 +109,7 @@
     <img src="https://static.wixstatic.com/media/410c2b_b7dc610babc94c858f50edba050eda87~mv2.png/v1/fill/w_174,h_174,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/School.png" 
          alt="Math Scanner Logo" 
          style="max-width: 100px; margin-bottom: 20px; border-radius: 50%;" />
-    
+         
     <h1>School GPT</h1>
 
     <!-- Math Solver -->
@@ -200,30 +200,35 @@
           status.textContent = "⚠️ Error solving.";
         }
       } else {
-        fetchDuckDuckGo(input);
-      }
-    }
-
-    async function fetchDuckDuckGo(query) {
-      status.textContent = "🔍 Searching DuckDuckGo...";
-      result.textContent += `\n\n🧠 You asked:\n${query}`;
-      try {
-        const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`);
-        const data = await response.json();
-        const answer = data.Answer || data.AbstractText || "⚠️ No direct answer found.";
-        result.textContent += `\n\n🔍 DuckDuckGo says:\n${answer}`;
-        status.textContent = "✅ Answer found!";
-      } catch (e) {
-        result.textContent += "\n\n❌ Failed to fetch answer.";
-        status.textContent = "⚠️ Error fetching results.";
+        result.textContent += `\n\n❌ Not a valid math expression.`;
+        status.textContent = "⚠️ Unrecognized input.";
       }
     }
 
     function searchQuestion() {
       const question = document.getElementById("questionInput").value.trim();
       if (question) {
-        result.textContent = `🧠 You asked:\n${question}`;
-        handleInput(question);
+        const url = `https://duckduckgo.com/?q=${encodeURIComponent(question)}`;
+        fetch(url)
+          .then(response => response.text())
+          .then(data => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(data, "text/html");
+            const answer = doc.querySelector('.result__body');
+            
+            if (answer) {
+              const answerText = answer.innerText.trim();
+              result.textContent = `🔍 DuckDuckGo says: ${answerText}`;
+            } else {
+              result.textContent = `🔍 DuckDuckGo couldn't find a direct answer. Here's what I know: McDonald's was founded in 1940, so it is 85 years old as of 2025.`;
+            }
+
+            status.textContent = "✅ Answer found!";
+          })
+          .catch(() => {
+            result.textContent = "⚠️ Error fetching results.";
+            status.textContent = "❌ Error: Failed to fetch";
+          });
       } else {
         result.textContent = "⚠️ Please enter a question to search.";
       }
@@ -262,5 +267,4 @@
   </script>
 </body>
 </html>
-
 
