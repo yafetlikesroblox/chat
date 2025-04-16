@@ -49,6 +49,15 @@
       background: #3730a3;
     }
 
+    #manualInput {
+      margin-top: 20px;
+      padding: 10px;
+      width: 100%;
+      font-size: 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
     #status {
       margin-top: 20px;
       font-size: 15px;
@@ -90,8 +99,10 @@
   <div class="app">
     <h1>📸 Math Scanner</h1>
     <button id="scanBtn">Scan Screen</button>
-    <p id="status">Ready to scan.</p>
-    <pre id="result">Click the button to get started!</pre>
+    <input type="text" id="manualInput" placeholder="Type a math expression like 2x2" />
+    <button id="solveBtn" style="margin-top: 10px;">Solve</button>
+    <p id="status">Ready to scan or solve.</p>
+    <pre id="result">Click a button to get started!</pre>
   </div>
 
   <video id="video" autoplay></video>
@@ -99,6 +110,8 @@
 
   <script>
     const scanBtn = document.getElementById('scanBtn');
+    const solveBtn = document.getElementById('solveBtn');
+    const manualInput = document.getElementById('manualInput');
     const status = document.getElementById('status');
     const result = document.getElementById('result');
     const video = document.getElementById('video');
@@ -130,32 +143,46 @@
           return;
         }
 
-        let cleaned = rawText
-          .replace(/×|x|X/g, '*')
-          .replace(/÷|:/g, '/')
-          .replace(/[^0-9+\-*/().= ]/g, '');
-
-        const expression = cleaned.split('=')[0].trim();
-
-        if (/^[0-9+\-*/(). ]+$/.test(expression)) {
-          try {
-            const answer = eval(expression);
-            result.textContent += `\n\n✅ Answer: ${expression} = ${answer}`;
-          } catch (e) {
-            result.textContent += `\n\n⚠️ I found math but couldn’t solve it.`;
-          }
-        } else {
-          result.textContent += `\n\n🔍 Not a clean math expression.`;
-        }
-
-        status.textContent = "✅ Done!";
+        handleMath(rawText);
       } catch (err) {
         console.error(err);
         status.textContent = "❌ Error: " + err.message;
         result.textContent = "Something went wrong.";
       }
     };
+
+    solveBtn.onclick = () => {
+      const typed = manualInput.value.trim();
+      if (!typed) {
+        result.textContent = "⚠️ Please type something first.";
+        return;
+      }
+      result.textContent = `📝 You typed:\n${typed}`;
+      handleMath(typed);
+    };
+
+    function handleMath(input) {
+      let cleaned = input
+        .replace(/×|x|X/g, '*')
+        .replace(/÷|:/g, '/')
+        .replace(/[^0-9+\-*/().= ]/g, '');
+
+      const expression = cleaned.split('=')[0].trim();
+
+      if (/^[0-9+\-*/(). ]+$/.test(expression)) {
+        try {
+          const answer = eval(expression);
+          result.textContent += `\n\n✅ Answer: ${expression} = ${answer}`;
+          status.textContent = "✅ Done!";
+        } catch (e) {
+          result.textContent += `\n\n⚠️ I found math but couldn’t solve it.`;
+          status.textContent = "⚠️ Error solving.";
+        }
+      } else {
+        result.textContent += `\n\n🔍 Not a clean math expression.`;
+        status.textContent = "⚠️ Unrecognized expression.";
+      }
+    }
   </script>
 </body>
 </html>
-
