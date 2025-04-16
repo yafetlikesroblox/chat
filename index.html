@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>School GPT App</title>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body {
@@ -208,10 +207,27 @@
     function searchQuestion() {
       const question = document.getElementById("questionInput").value.trim();
       if (question) {
-        const url = `https://www.google.com/search?q=${encodeURIComponent(question)}`;
-        window.open(url, "_blank");
-        status.textContent = "🔍 Searching on Google...";
-        result.textContent = `🧠 You asked:\n${question}\n\nOpening search results...`;
+        status.textContent = "🔍 Searching on DuckDuckGo...";
+        result.textContent = `🧠 You asked:\n${question}\n\nSearching...`;
+
+        // DuckDuckGo Instant Answer API
+        fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.Answer) {
+              const answer = data.Answer;
+              result.textContent = `🔍 DuckDuckGo says: ${answer}`;
+              status.textContent = "✅ Done!";
+              speak(answer);
+            } else {
+              result.textContent = "⚠️ No answer found.";
+              status.textContent = "❌ No results.";
+            }
+          })
+          .catch(err => {
+            result.textContent = "⚠️ Error fetching results.";
+            status.textContent = "❌ Error: " + err.message;
+          });
       } else {
         result.textContent = "⚠️ Please enter a question to search.";
       }
@@ -246,6 +262,15 @@
       recognition.onend = () => {
         status.textContent += " (Stopped listening)";
       };
+    }
+
+    function speak(text) {
+      const speech = new SpeechSynthesisUtterance(text);
+      speech.lang = 'en-US';
+      speech.volume = 1;
+      speech.rate = 1;
+      speech.pitch = 1;
+      window.speechSynthesis.speak(speech);
     }
   </script>
 </body>
