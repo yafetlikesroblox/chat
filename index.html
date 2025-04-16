@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>School GPT App</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body {
@@ -14,7 +15,6 @@
       align-items: center;
       min-height: 100vh;
     }
-
     .app {
       background: white;
       border-radius: 20px;
@@ -25,13 +25,11 @@
       text-align: center;
       transition: all 0.3s ease;
     }
-
     h1 {
       font-size: 28px;
       margin-bottom: 20px;
       color: #222;
     }
-
     button {
       padding: 12px 24px;
       font-size: 16px;
@@ -44,11 +42,9 @@
       transition: background 0.2s ease;
       margin-top: 10px;
     }
-
     button:hover {
       background: #3730a3;
     }
-
     input {
       margin-top: 15px;
       padding: 10px;
@@ -57,13 +53,11 @@
       border-radius: 8px;
       border: 1px solid #ccc;
     }
-
     #status {
       margin-top: 20px;
       font-size: 15px;
       color: #555;
     }
-
     #result {
       margin-top: 20px;
       background: #f9fafb;
@@ -75,29 +69,23 @@
       color: #333;
       font-size: 14px;
     }
-
     @media (max-width: 600px) {
       .app {
         padding: 20px;
       }
-
       h1 {
         font-size: 22px;
       }
-
       button {
         width: 100%;
       }
     }
-
     video, canvas {
       display: none;
     }
-
     .mic-btn {
       background-color: #10b981;
     }
-
     .mic-btn:hover {
       background-color: #059669;
     }
@@ -110,17 +98,12 @@
          style="max-width: 100px; margin-bottom: 20px; border-radius: 50%;" />
          
     <h1>School GPT</h1>
-
-    <!-- Math Solver -->
     <button id="scanBtn">Scan Screen</button>
     <input type="text" id="manualInput" placeholder="Type a math expression like 2x2" />
     <button id="solveBtn">Solve</button>
-
-    <!-- Question Input & Mic -->
     <input type="text" id="questionInput" placeholder="Ask any question..." />
     <button onclick="searchQuestion()">Search Answer</button>
     <button onclick="startListening()" class="mic-btn">🎙️ Speak</button>
-
     <p id="status">Ready to scan or solve.</p>
     <pre id="result">Click a button to get started!</pre>
   </div>
@@ -194,6 +177,7 @@
           const answer = eval(expression);
           result.textContent += `\n\n✅ Answer: ${expression} = ${answer}`;
           status.textContent = "✅ Done!";
+          speak(answer);
         } catch (e) {
           result.textContent += `\n\n⚠️ I found math but couldn’t solve it.`;
           status.textContent = "⚠️ Error solving.";
@@ -210,28 +194,22 @@
         status.textContent = "🔍 Searching on DuckDuckGo...";
         result.textContent = `🧠 You asked:\n${question}\n\nSearching...`;
 
-        // DuckDuckGo Instant Answer API
-        fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json`)
-          .then(response => response.json())
-          .then(data => {
-            let answer = "";
+        const proxyUrl = 'https://api.allorigins.win/get?url=';
+        const duckUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json`;
 
-            // Check for a meaningful answer
-            if (data.Answer) {
-              answer = data.Answer;
-            } else if (data.Abstract) {
-              answer = data.Abstract;
-            } else if (data.RelatedTopics && data.RelatedTopics.length > 0) {
-              answer = data.RelatedTopics[0].Text || "No direct answer found.";
-            }
+        fetch(proxyUrl + encodeURIComponent(duckUrl))
+          .then(res => res.json())
+          .then(data => {
+            const parsed = JSON.parse(data.contents);
+            let answer = parsed.Answer || parsed.Abstract || (parsed.RelatedTopics[0]?.Text || "");
 
             if (answer) {
               result.textContent = `🔍 DuckDuckGo says: ${answer}`;
-              status.textContent = "✅ Done!";
+              status.textContent = "✅ Answer found!";
               speak(answer);
             } else {
-              result.textContent = "⚠️ No answer found.";
-              status.textContent = "❌ No results.";
+              result.textContent = "⚠️ No clear answer found.";
+              status.textContent = "❌ No direct result.";
             }
           })
           .catch(err => {
@@ -275,12 +253,11 @@
     }
 
     function speak(text) {
-      const speech = new SpeechSynthesisUtterance(text);
-      speech.lang = 'en-US';
-      speech.volume = 1;
-      speech.rate = 1;
-      speech.pitch = 1;
-      window.speechSynthesis.speak(speech);
+      if ('speechSynthesis' in window) {
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = "en-US";
+        speechSynthesis.speak(utter);
+      }
     }
   </script>
 </body>
