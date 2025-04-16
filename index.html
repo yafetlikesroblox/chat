@@ -15,6 +15,7 @@
       align-items: center;
       min-height: 100vh;
     }
+
     .app {
       background: white;
       border-radius: 20px;
@@ -25,11 +26,13 @@
       text-align: center;
       transition: all 0.3s ease;
     }
+
     h1 {
       font-size: 28px;
       margin-bottom: 20px;
       color: #222;
     }
+
     button {
       padding: 12px 24px;
       font-size: 16px;
@@ -42,9 +45,11 @@
       transition: background 0.2s ease;
       margin-top: 10px;
     }
+
     button:hover {
       background: #3730a3;
     }
+
     input {
       margin-top: 15px;
       padding: 10px;
@@ -53,11 +58,13 @@
       border-radius: 8px;
       border: 1px solid #ccc;
     }
+
     #status {
       margin-top: 20px;
       font-size: 15px;
       color: #555;
     }
+
     #result {
       margin-top: 20px;
       background: #f9fafb;
@@ -69,23 +76,29 @@
       color: #333;
       font-size: 14px;
     }
+
     @media (max-width: 600px) {
       .app {
         padding: 20px;
       }
+
       h1 {
         font-size: 22px;
       }
+
       button {
         width: 100%;
       }
     }
+
     video, canvas {
       display: none;
     }
+
     .mic-btn {
       background-color: #10b981;
     }
+
     .mic-btn:hover {
       background-color: #059669;
     }
@@ -98,12 +111,15 @@
          style="max-width: 100px; margin-bottom: 20px; border-radius: 50%;" />
          
     <h1>School GPT</h1>
+
     <button id="scanBtn">Scan Screen</button>
     <input type="text" id="manualInput" placeholder="Type a math expression like 2x2" />
     <button id="solveBtn">Solve</button>
+
     <input type="text" id="questionInput" placeholder="Ask any question..." />
     <button onclick="searchQuestion()">Search Answer</button>
     <button onclick="startListening()" class="mic-btn">🎙️ Speak</button>
+
     <p id="status">Ready to scan or solve.</p>
     <pre id="result">Click a button to get started!</pre>
   </div>
@@ -177,7 +193,6 @@
           const answer = eval(expression);
           result.textContent += `\n\n✅ Answer: ${expression} = ${answer}`;
           status.textContent = "✅ Done!";
-          speak(answer);
         } catch (e) {
           result.textContent += `\n\n⚠️ I found math but couldn’t solve it.`;
           status.textContent = "⚠️ Error solving.";
@@ -188,36 +203,44 @@
       }
     }
 
-    function searchQuestion() {
+    function extractAnswer(parsed) {
+      if (parsed.Answer) return parsed.Answer;
+      if (parsed.Abstract) return parsed.Abstract;
+
+      const topics = parsed.RelatedTopics || [];
+      for (let t of topics) {
+        if (t.Text) return t.Text;
+        if (t.Topics && t.Topics.length && t.Topics[0].Text) return t.Topics[0].Text;
+      }
+
+      return null;
+    }
+
+    async function searchQuestion() {
       const question = document.getElementById("questionInput").value.trim();
-      if (question) {
-        status.textContent = "🔍 Searching on DuckDuckGo...";
-        result.textContent = `🧠 You asked:\n${question}\n\nSearching...`;
-
-        const proxyUrl = 'https://api.allorigins.win/get?url=';
-        const duckUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json`;
-
-        fetch(proxyUrl + encodeURIComponent(duckUrl))
-          .then(res => res.json())
-          .then(data => {
-            const parsed = JSON.parse(data.contents);
-            let answer = parsed.Answer || parsed.Abstract || (parsed.RelatedTopics[0]?.Text || "");
-
-            if (answer) {
-              result.textContent = `🔍 DuckDuckGo says: ${answer}`;
-              status.textContent = "✅ Answer found!";
-              speak(answer);
-            } else {
-              result.textContent = "⚠️ No clear answer found.";
-              status.textContent = "❌ No direct result.";
-            }
-          })
-          .catch(err => {
-            result.textContent = "⚠️ Error fetching results.";
-            status.textContent = "❌ Error: " + err.message;
-          });
-      } else {
+      if (!question) {
         result.textContent = "⚠️ Please enter a question to search.";
+        return;
+      }
+
+      result.textContent = `🧠 You asked:\n${question}`;
+      status.textContent = "🔍 Searching DuckDuckGo...";
+
+      try {
+        const res = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json&no_redirect=1&no_html=1`);
+        const parsed = await res.json();
+        let answer = extractAnswer(parsed);
+
+        if (answer) {
+          result.textContent += `\n\n🔍 DuckDuckGo says:\n${answer}`;
+          status.textContent = "✅ Answer found!";
+        } else {
+          result.textContent += "\n\n⚠️ Couldn't find a direct answer.";
+          status.textContent = "❓ No direct answer.";
+        }
+      } catch (err) {
+        result.textContent += "\n\n❌ Error fetching results.";
+        status.textContent = "❌ Error: " + err.message;
       }
     }
 
@@ -251,15 +274,6 @@
         status.textContent += " (Stopped listening)";
       };
     }
-
-    function speak(text) {
-      if ('speechSynthesis' in window) {
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = "en-US";
-        speechSynthesis.speak(utter);
-      }
-    }
   </script>
 </body>
 </html>
-
