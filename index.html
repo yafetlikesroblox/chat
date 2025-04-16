@@ -109,7 +109,7 @@
     <img src="https://static.wixstatic.com/media/410c2b_b7dc610babc94c858f50edba050eda87~mv2.png/v1/fill/w_174,h_174,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/School.png" 
          alt="Math Scanner Logo" 
          style="max-width: 100px; margin-bottom: 20px; border-radius: 50%;" />
-         
+    
     <h1>School GPT</h1>
 
     <!-- Math Solver -->
@@ -200,49 +200,33 @@
           status.textContent = "⚠️ Error solving.";
         }
       } else {
-        searchDuckDuckGo(input);
+        fetchDuckDuckGo(input);
+      }
+    }
+
+    async function fetchDuckDuckGo(query) {
+      status.textContent = "🔍 Searching DuckDuckGo...";
+      result.textContent += `\n\n🧠 You asked:\n${query}`;
+      try {
+        const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`);
+        const data = await response.json();
+        const answer = data.Answer || data.AbstractText || "⚠️ No direct answer found.";
+        result.textContent += `\n\n🔍 DuckDuckGo says:\n${answer}`;
+        status.textContent = "✅ Answer found!";
+      } catch (e) {
+        result.textContent += "\n\n❌ Failed to fetch answer.";
+        status.textContent = "⚠️ Error fetching results.";
       }
     }
 
     function searchQuestion() {
       const question = document.getElementById("questionInput").value.trim();
-      if (!question) {
+      if (question) {
+        result.textContent = `🧠 You asked:\n${question}`;
+        handleInput(question);
+      } else {
         result.textContent = "⚠️ Please enter a question to search.";
-        return;
       }
-
-      result.textContent = `🧠 You asked:\n${question}`;
-      status.textContent = "🔍 Searching...";
-
-      searchDuckDuckGo(question);
-    }
-
-    function searchDuckDuckGo(query) {
-      const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(`https://lite.duckduckgo.com/lite/?q=${query}`);
-
-      fetch(proxy)
-        .then(response => response.json())
-        .then(data => {
-          const html = data.contents;
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(html, 'text/html');
-          const links = doc.querySelectorAll('a.result-link');
-
-          if (links.length > 0) {
-            const firstResult = links[0].textContent;
-            const url = links[0].href;
-            result.textContent += `\n\n🔍 DuckDuckGo says:\n${firstResult}\n\n🔗 ${url}`;
-            status.textContent = "✅ Answer found!";
-          } else {
-            result.textContent += `\n\n⚠️ No direct answer found.`;
-            status.textContent = "⚠️ No results.";
-          }
-        })
-        .catch(error => {
-          console.error(error);
-          result.textContent += "\n\n❌ Error fetching results.";
-          status.textContent = "⚠️ Error fetching.";
-        });
     }
 
     function startListening() {
