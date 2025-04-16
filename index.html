@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>School GPT App</title>
+  <title>School GPT</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
@@ -112,18 +112,16 @@
          
     <h1>School GPT</h1>
 
-    <!-- Math Solver -->
     <button id="scanBtn">Scan Screen</button>
     <input type="text" id="manualInput" placeholder="Type a math expression like 2x2" />
     <button id="solveBtn">Solve</button>
 
-    <!-- Question Input & Mic -->
     <input type="text" id="questionInput" placeholder="Ask any question..." />
     <button onclick="searchQuestion()">Search Answer</button>
     <button onclick="startListening()" class="mic-btn">🎙️ Speak</button>
 
     <p id="status">Ready to scan or solve.</p>
-    <pre id="result">Click a button to get started!</pre>
+    <pre id="result">Tell The AI your question NOTE (Do not put a equation!)</pre>
   </div>
 
   <video id="video" autoplay></video>
@@ -205,23 +203,44 @@
       }
     }
 
-    function searchQuestion() {
+    function extractAnswer(parsed) {
+      if (parsed.Answer) return parsed.Answer;
+      if (parsed.Abstract) return parsed.Abstract;
+
+      const topics = parsed.RelatedTopics || [];
+      for (let t of topics) {
+        if (t.Text) return t.Text;
+        if (t.Topics && t.Topics.length && t.Topics[0].Text) return t.Topics[0].Text;
+      }
+
+      return null;
+    }
+
+    async function searchQuestion() {
       const question = document.getElementById("questionInput").value.trim();
-      if (question) {
-        fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json`)
-          .then(response => response.json())
-          .then(data => {
-            const answer = data.Answer || data.AbstractText || "Sorry, I couldn't find an answer.";
-            result.textContent = `🧠 You asked:\n${question}\n\n🔍 DuckDuckGo says:\n${answer}`;
-            status.textContent = "✅ Answer found!";
-          })
-          .catch(err => {
-            result.textContent = "⚠️ Error fetching results.";
-            status.textContent = "❌ Failed to fetch.";
-            console.error("Error fetching DuckDuckGo data", err);
-          });
-      } else {
+      if (!question) {
         result.textContent = "⚠️ Please enter a question to search.";
+        return;
+      }
+
+      result.textContent = `🧠 You asked:\n${question}`;
+      status.textContent = "🔍 Searching DuckDuckGo...";
+
+      try {
+        const res = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json&no_redirect=1&no_html=1`);
+        const parsed = await res.json();
+        let answer = extractAnswer(parsed);
+
+        if (answer) {
+          result.textContent += `\n\n🔍 DuckDuckGo says:\n${answer}`;
+          status.textContent = "✅ Answer found!";
+        } else {
+          result.textContent += "\n\n⚠️ Couldn't find a direct answer.";
+          status.textContent = "❓ No direct answer.";
+        }
+      } catch (err) {
+        result.textContent += "\n\n❌ Error fetching results.";
+        status.textContent = "❌ Error: " + err.message;
       }
     }
 
