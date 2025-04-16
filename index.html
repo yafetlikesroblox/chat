@@ -112,10 +112,12 @@
          
     <h1>School GPT</h1>
 
+    <!-- Math Solver -->
     <button id="scanBtn">Scan Screen</button>
     <input type="text" id="manualInput" placeholder="Type a math expression like 2x2" />
     <button id="solveBtn">Solve</button>
 
+    <!-- Question Input & Mic -->
     <input type="text" id="questionInput" placeholder="Ask any question..." />
     <button onclick="searchQuestion()">Search Answer</button>
     <button onclick="startListening()" class="mic-btn">🎙️ Speak</button>
@@ -181,7 +183,11 @@
     };
 
     function handleInput(input) {
-      let cleaned = input.replace(/×|x|X/g, '*').replace(/÷|:/g, '/').replace(/[^0-9+\-*/().= ]/g, '');
+      let cleaned = input
+        .replace(/×|x|X/g, '*')
+        .replace(/÷|:/g, '/')
+        .replace(/[^0-9+\-*/().= ]/g, '');
+
       const expression = cleaned.split('=')[0].trim();
 
       if (/^[0-9+\-*/(). ]+$/.test(expression)) {
@@ -194,17 +200,11 @@
           status.textContent = "⚠️ Error solving.";
         }
       } else {
-        result.textContent += `\n\n❌ Not a valid math expression.`;
-        status.textContent = "⚠️ Unrecognized input.";
+        searchDuckDuckGo(input);
       }
     }
 
-    function isMathExpression(text) {
-      const cleaned = text.replace(/×|x|X/g, '*').replace(/÷|:/g, '/');
-      return /^[0-9+\-*/().\s=]+$/.test(cleaned);
-    }
-
-    async function searchQuestion() {
+    function searchQuestion() {
       const question = document.getElementById("questionInput").value.trim();
       if (!question) {
         result.textContent = "⚠️ Please enter a question to search.";
@@ -212,34 +212,37 @@
       }
 
       result.textContent = `🧠 You asked:\n${question}`;
-      const cleaned = question.replace(/×|x|X/g, '*').replace(/÷|:/g, '/');
+      status.textContent = "🔍 Searching...";
 
-      if (isMathExpression(cleaned)) {
-        try {
-          const expression = cleaned.split('=')[0].trim();
-          const answer = eval(expression);
-          result.textContent += `\n\n✅ Math Answer: ${expression} = ${answer}`;
-          status.textContent = "✅ Solved with built-in math!";
-          return;
-        } catch (e) {
-          result.textContent += `\n\n⚠️ Error solving math expression.`;
-          status.textContent = "⚠️ Math failed.";
-          return;
-        }
-      }
+      searchDuckDuckGo(question);
+    }
 
-      status.textContent = "🔍 Searching DuckDuckGo...";
-      try {
-        const res = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json&no_redirect=1&no_html=1`);
-        const parsed = await res.json();
-        let answer = parsed.Abstract || parsed.Answer || parsed.RelatedTopics?.[0]?.Text || "⚠️ No direct answer found.";
+    function searchDuckDuckGo(query) {
+      const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(`https://lite.duckduckgo.com/lite/?q=${query}`);
 
-        result.textContent += `\n\n🔍 DuckDuckGo says:\n${answer}`;
-        status.textContent = "✅ Answer found!";
-      } catch (err) {
-        result.textContent += "\n\n❌ Error fetching results.";
-        status.textContent = "❌ Error: " + err.message;
-      }
+      fetch(proxy)
+        .then(response => response.json())
+        .then(data => {
+          const html = data.contents;
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+          const links = doc.querySelectorAll('a.result-link');
+
+          if (links.length > 0) {
+            const firstResult = links[0].textContent;
+            const url = links[0].href;
+            result.textContent += `\n\n🔍 DuckDuckGo says:\n${firstResult}\n\n🔗 ${url}`;
+            status.textContent = "✅ Answer found!";
+          } else {
+            result.textContent += `\n\n⚠️ No direct answer found.`;
+            status.textContent = "⚠️ No results.";
+          }
+        })
+        .catch(error => {
+          console.error(error);
+          result.textContent += "\n\n❌ Error fetching results.";
+          status.textContent = "⚠️ Error fetching.";
+        });
     }
 
     function startListening() {
@@ -275,4 +278,5 @@
   </script>
 </body>
 </html>
+
 
