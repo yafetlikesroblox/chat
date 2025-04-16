@@ -43,14 +43,15 @@
       border-radius: 10px;
       cursor: pointer;
       transition: background 0.2s ease;
+      margin-top: 10px;
     }
 
     button:hover {
       background: #3730a3;
     }
 
-    #manualInput {
-      margin-top: 20px;
+    input {
+      margin-top: 15px;
       padding: 10px;
       width: 100%;
       font-size: 15px;
@@ -93,19 +94,34 @@
     video, canvas {
       display: none;
     }
+
+    .mic-btn {
+      background-color: #10b981;
+    }
+
+    .mic-btn:hover {
+      background-color: #059669;
+    }
   </style>
 </head>
 <body>
   <div class="app">
-    <!-- ✅ Added logo image here -->
     <img src="https://static.wixstatic.com/media/410c2b_b7dc610babc94c858f50edba050eda87~mv2.png/v1/fill/w_174,h_174,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/School.png" 
          alt="Math Scanner Logo" 
          style="max-width: 100px; margin-bottom: 20px; border-radius: 50%;" />
          
     <h1>School GPT</h1>
+
+    <!-- Math Solver -->
     <button id="scanBtn">Scan Screen</button>
     <input type="text" id="manualInput" placeholder="Type a math expression like 2x2" />
-    <button id="solveBtn" style="margin-top: 10px;">Solve</button>
+    <button id="solveBtn">Solve</button>
+
+    <!-- Question Input & Mic -->
+    <input type="text" id="questionInput" placeholder="Ask any question..." />
+    <button onclick="searchQuestion()">Search Answer</button>
+    <button onclick="startListening()" class="mic-btn">🎙️ Speak</button>
+
     <p id="status">Ready to scan or solve.</p>
     <pre id="result">Click a button to get started!</pre>
   </div>
@@ -148,7 +164,7 @@
           return;
         }
 
-        handleMath(rawText);
+        handleInput(rawText);
       } catch (err) {
         console.error(err);
         status.textContent = "❌ Error: " + err.message;
@@ -163,10 +179,10 @@
         return;
       }
       result.textContent = `📝 You typed:\n${typed}`;
-      handleMath(typed);
+      handleInput(typed);
     };
 
-    function handleMath(input) {
+    function handleInput(input) {
       let cleaned = input
         .replace(/×|x|X/g, '*')
         .replace(/÷|:/g, '/')
@@ -184,9 +200,52 @@
           status.textContent = "⚠️ Error solving.";
         }
       } else {
-        result.textContent += `\n\n🔍 Not a clean math expression.`;
-        status.textContent = "⚠️ Unrecognized expression.";
+        result.textContent += `\n\n❌ Not a valid math expression.`;
+        status.textContent = "⚠️ Unrecognized input.";
       }
+    }
+
+    function searchQuestion() {
+      const question = document.getElementById("questionInput").value.trim();
+      if (question) {
+        const url = `https://www.google.com/search?q=${encodeURIComponent(question)}`;
+        window.open(url, "_blank");
+        status.textContent = "🔍 Searching on Google...";
+        result.textContent = `🧠 You asked:\n${question}\n\nOpening search results...`;
+      } else {
+        result.textContent = "⚠️ Please enter a question to search.";
+      }
+    }
+
+    function startListening() {
+      if (!('webkitSpeechRecognition' in window)) {
+        alert("🎤 Your browser doesn't support speech recognition. Try using Google Chrome.");
+        return;
+      }
+
+      const recognition = new webkitSpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      status.textContent = "🎤 Listening...";
+      recognition.start();
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById("questionInput").value = transcript;
+        result.textContent = `🗣️ Heard: "${transcript}"`;
+        status.textContent = "✅ Voice captured. Click 'Search Answer'!";
+      };
+
+      recognition.onerror = (event) => {
+        status.textContent = "❌ Voice error: " + event.error;
+        result.textContent = "⚠️ Couldn't hear anything useful.";
+      };
+
+      recognition.onend = () => {
+        status.textContent += " (Stopped listening)";
+      };
     }
   </script>
 </body>
