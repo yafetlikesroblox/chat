@@ -181,11 +181,7 @@
     };
 
     function handleInput(input) {
-      let cleaned = input
-        .replace(/×|x|X/g, '*')
-        .replace(/÷|:/g, '/')
-        .replace(/[^0-9+\-*/().= ]/g, '');
-
+      let cleaned = input.replace(/×|x|X/g, '*').replace(/÷|:/g, '/').replace(/[^0-9+\-*/().= ]/g, '');
       const expression = cleaned.split('=')[0].trim();
 
       if (/^[0-9+\-*/(). ]+$/.test(expression)) {
@@ -203,17 +199,9 @@
       }
     }
 
-    function extractAnswer(parsed) {
-      if (parsed.Answer) return parsed.Answer;
-      if (parsed.Abstract) return parsed.Abstract;
-
-      const topics = parsed.RelatedTopics || [];
-      for (let t of topics) {
-        if (t.Text) return t.Text;
-        if (t.Topics && t.Topics.length && t.Topics[0].Text) return t.Topics[0].Text;
-      }
-
-      return null;
+    function isMathExpression(text) {
+      const cleaned = text.replace(/×|x|X/g, '*').replace(/÷|:/g, '/');
+      return /^[0-9+\-*/().\s=]+$/.test(cleaned);
     }
 
     async function searchQuestion() {
@@ -224,20 +212,30 @@
       }
 
       result.textContent = `🧠 You asked:\n${question}`;
-      status.textContent = "🔍 Searching DuckDuckGo...";
+      const cleaned = question.replace(/×|x|X/g, '*').replace(/÷|:/g, '/');
 
+      if (isMathExpression(cleaned)) {
+        try {
+          const expression = cleaned.split('=')[0].trim();
+          const answer = eval(expression);
+          result.textContent += `\n\n✅ Math Answer: ${expression} = ${answer}`;
+          status.textContent = "✅ Solved with built-in math!";
+          return;
+        } catch (e) {
+          result.textContent += `\n\n⚠️ Error solving math expression.`;
+          status.textContent = "⚠️ Math failed.";
+          return;
+        }
+      }
+
+      status.textContent = "🔍 Searching DuckDuckGo...";
       try {
         const res = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json&no_redirect=1&no_html=1`);
         const parsed = await res.json();
-        let answer = extractAnswer(parsed);
+        let answer = parsed.Abstract || parsed.Answer || parsed.RelatedTopics?.[0]?.Text || "⚠️ No direct answer found.";
 
-        if (answer) {
-          result.textContent += `\n\n🔍 DuckDuckGo says:\n${answer}`;
-          status.textContent = "✅ Answer found!";
-        } else {
-          result.textContent += "\n\n⚠️ Couldn't find a direct answer.";
-          status.textContent = "❓ No direct answer.";
-        }
+        result.textContent += `\n\n🔍 DuckDuckGo says:\n${answer}`;
+        status.textContent = "✅ Answer found!";
       } catch (err) {
         result.textContent += "\n\n❌ Error fetching results.";
         status.textContent = "❌ Error: " + err.message;
@@ -277,3 +275,4 @@
   </script>
 </body>
 </html>
+
