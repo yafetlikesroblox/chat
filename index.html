@@ -6,7 +6,102 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    /* Add your previous styles here */
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: #f2f4f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .app {
+      background: white;
+      border-radius: 20px;
+      padding: 30px 40px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 20px;
+      color: #222;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+      background: #4f46e5;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background: #3730a3;
+    }
+
+    input {
+      margin-top: 15px;
+      padding: 10px;
+      width: 100%;
+      font-size: 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-size: 15px;
+      color: #555;
+    }
+
+    #result {
+      margin-top: 20px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: left;
+      white-space: pre-wrap;
+      color: #333;
+      font-size: 14px;
+    }
+
+    @media (max-width: 600px) {
+      .app {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 22px;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+
+    video, canvas {
+      display: none;
+    }
+
+    .mic-btn {
+      background-color: #10b981;
+    }
+
+    .mic-btn:hover {
+      background-color: #059669;
+    }
   </style>
 </head>
 <body>
@@ -112,43 +207,22 @@
 
     function searchQuestion() {
       const question = document.getElementById("questionInput").value.trim();
-      if (!question) {
+      if (question) {
+        fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json`)
+          .then(response => response.json())
+          .then(data => {
+            const answer = data.Answer || data.AbstractText || "Sorry, I couldn't find an answer.";
+            result.textContent = `🧠 You asked:\n${question}\n\n🔍 DuckDuckGo says:\n${answer}`;
+            status.textContent = "✅ Answer found!";
+          })
+          .catch(err => {
+            result.textContent = "⚠️ Error fetching results.";
+            status.textContent = "❌ Failed to fetch.";
+            console.error("Error fetching DuckDuckGo data", err);
+          });
+      } else {
         result.textContent = "⚠️ Please enter a question to search.";
-        return;
       }
-
-      // Fallback responses for known questions
-      const fallbackResponses = {
-        "what is 2x2": "2x2 = 4",
-        "who is the president of the United States": "As of 2025, the president is Joe Biden.",
-        "how old is mcdonalds": "McDonald's was founded in 1940, making it 85 years old in 2025."
-      };
-
-      if (fallbackResponses[question.toLowerCase()]) {
-        result.textContent = `✅ Answer found!\n\n🧠 You asked:\n${question}\n\n🧠 Answer: ${fallbackResponses[question.toLowerCase()]}`;
-        status.textContent = "✅ Answer provided from predefined list.";
-        return;
-      }
-
-      const url = `https://duckduckgo.com/?q=${encodeURIComponent(question)}`;
-      fetch(url)
-        .then(response => response.text())
-        .then(data => {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(data, 'text/html');
-          const answer = doc.querySelector('.result__body');
-          if (answer) {
-            result.textContent = `✅ Answer found!\n\n🧠 You asked:\n${question}\n\n🔍 DuckDuckGo says:\n${answer.textContent.trim()}`;
-          } else {
-            result.textContent = `🔍 DuckDuckGo says: No direct answer found.`;
-          }
-        })
-        .catch(error => {
-          console.error(error);
-          result.textContent = "⚠️ Error fetching results.";
-        });
-
-      status.textContent = "🔍 Searching on DuckDuckGo...";
     }
 
     function startListening() {
