@@ -1,269 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>School GPT</title>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Inter', sans-serif;
-      background: #f2f4f8;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
-
-    .app {
-      background: white;
-      border-radius: 20px;
-      padding: 30px 40px;
-      max-width: 500px;
-      width: 90%;
-      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-      text-align: center;
-      transition: all 0.3s ease;
-    }
-
-    h1 {
-      font-size: 28px;
-      margin-bottom: 20px;
-      color: #222;
-    }
-
-    button {
-      padding: 12px 24px;
-      font-size: 16px;
-      font-weight: 600;
-      color: white;
-      background: #4f46e5;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: background 0.2s ease;
-      margin-top: 10px;
-    }
-
-    button:hover {
-      background: #3730a3;
-    }
-
-    input {
-      margin-top: 15px;
-      padding: 10px;
-      width: 100%;
-      font-size: 15px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-    }
-
-    #status {
-      margin-top: 20px;
-      font-size: 15px;
-      color: #555;
-    }
-
-    #result {
-      margin-top: 20px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      padding: 15px;
-      border-radius: 10px;
-      text-align: left;
-      white-space: pre-wrap;
-      color: #333;
-      font-size: 14px;
-    }
-
-    @media (max-width: 600px) {
-      .app {
-        padding: 20px;
-      }
-
-      h1 {
-        font-size: 22px;
-      }
-
-      button {
-        width: 100%;
-      }
-    }
-
-    video, canvas {
-      display: none;
-    }
-
-    .mic-btn {
-      background-color: #10b981;
-    }
-
-    .mic-btn:hover {
-      background-color: #059669;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatGPT Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #chat-box {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+        #messages {
+            height: 300px;
+            overflow-y: scroll;
+            padding: 10px;
+            background-color: white;
+            border: 1px solid #ddd;
+        }
+        .user-message, .bot-message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .user-message {
+            background-color: #c1f0c1;
+            text-align: right;
+        }
+        .bot-message {
+            background-color: #f0f0f0;
+            text-align: left;
+        }
+        input[type="text"] {
+            width: calc(100% - 120px);
+            padding: 10px;
+            margin: 10px 10px 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
 </head>
 <body>
-  <div class="app">
-    <img src="https://static.wixstatic.com/media/410c2b_b7dc610babc94c858f50edba050eda87~mv2.png/v1/fill/w_174,h_174,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/School.png" 
-         alt="Math Scanner Logo" 
-         style="max-width: 100px; margin-bottom: 20px; border-radius: 50%;" />
 
-    <h1>School GPT</h1>
+<div id="chat-box">
+    <div id="messages"></div>
+    <input type="text" id="user-input" placeholder="Type your message here..." />
+    <button id="send-btn">Send</button>
+</div>
 
-    <button id="scanBtn">Scan Screen</button>
-    <input type="text" id="manualInput" placeholder="Type a math expression like 2x2" />
-    <button id="solveBtn">Solve</button>
+<script>
+    const sendButton = document.getElementById("send-btn");
+    const userInput = document.getElementById("user-input");
+    const messagesDiv = document.getElementById("messages");
 
-    <input type="text" id="questionInput" placeholder="Ask any question..." />
-    <button onclick="searchQuestion()">Search Answer</button>
-    <button onclick="startListening()" class="mic-btn">🎙️ Speak</button>
+    const apiKey = "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"; // Replace with your OpenAI API Key
 
-    <p id="status">Ready to scan or solve.</p>
-    <pre id="result">Tell The AI your question NOTE (Do not put a equation!)</pre>
-  </div>
+    sendButton.addEventListener("click", async () => {
+        const userMessage = userInput.value.trim();
 
-  <video id="video" autoplay></video>
-  <canvas id="canvas"></canvas>
+        if (userMessage === "") return;
 
-  <script>
-    const scanBtn = document.getElementById('scanBtn');
-    const solveBtn = document.getElementById('solveBtn');
-    const manualInput = document.getElementById('manualInput');
-    const status = document.getElementById('status');
-    const result = document.getElementById('result');
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
+        // Display user message in the chat box
+        displayMessage(userMessage, "user-message");
+        
+        // Clear the input field
+        userInput.value = "";
 
-    const answerCache = JSON.parse(localStorage.getItem('answerCache') || '{}');
+        // Call OpenAI API to get response
+        const response = await getGPTResponse(userMessage);
+        displayMessage(response, "bot-message");
+    });
 
-    const openAiApiKey = "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"; // Replace with your OpenAI API key
+    function displayMessage(message, className) {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = className;
+        messageDiv.textContent = message;
+        messagesDiv.appendChild(messageDiv);
 
-    scanBtn.onclick = async () => {
-      result.textContent = "";
-      status.textContent = "🟡 Requesting screen access...";
-      try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        video.srcObject = stream;
-        await new Promise(resolve => video.onloadedmetadata = resolve);
-
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        stream.getTracks().forEach(track => track.stop());
-        status.textContent = "🟡 Scanning for text...";
-
-        const { data } = await Tesseract.recognize(canvas, 'eng');
-        const rawText = data.text.trim();
-        result.textContent = `📝 Detected:\n${rawText}`;
-
-        if (!rawText) {
-          result.textContent = "🤷 I couldn't find any text.";
-          status.textContent = "⚠️ No text found.";
-          return;
-        }
-
-        handleInput(rawText);
-      } catch (err) {
-        console.error(err);
-        status.textContent = "❌ Error: " + err.message;
-        result.textContent = "Something went wrong.";
-      }
-    };
-
-    solveBtn.onclick = () => {
-      const typed = manualInput.value.trim();
-      if (!typed) {
-        result.textContent = "⚠️ Please type something first.";
-        return;
-      }
-      result.textContent = `📝 You typed:\n${typed}`;
-      handleInput(typed);
-    };
-
-    function handleInput(input) {
-      let cleaned = input
-        .replace(/×|x|X/g, '*')
-        .replace(/÷|:/g, '/')
-        .replace(/[^0-9+\-*/().= ]/g, '');
-
-      const expression = cleaned.split('=')[0].trim();
-
-      if (/^[0-9+\-*/(). ]+$/.test(expression)) {
-        try {
-          const answer = eval(expression);
-          result.textContent += `\n\n✅ Answer: ${expression} = ${answer}`;
-          status.textContent = "✅ Done!";
-          return;
-        } catch (e) {
-          result.textContent += `\n\n⚠️ I found math but couldn’t solve it.`;
-          status.textContent = "⚠️ Error solving.";
-          return;
-        }
-      }
-
-      result.textContent += `\n\n❌ Not a valid math expression.`;
-      status.textContent = "⚠️ Unrecognized input.";
+        // Scroll to the bottom of the messages area
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    function extractAnswer(parsed) {
-      if (parsed.Answer) return parsed.Answer;
-      if (parsed.Abstract) return parsed.Abstract;
-      const topics = parsed.RelatedTopics || [];
-      for (let t of topics) {
-        if (t.Text) return t.Text;
-        if (t.Topics && t.Topics.length && t.Topics[0].Text) return t.Topics[0].Text;
-      }
-      return null;
+    async function getGPTResponse(userMessage) {
+        const response = await fetch("https://api.openai.com/v1/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: "gpt-4", // You can use "gpt-3.5-turbo" or another model
+                prompt: userMessage,
+                max_tokens: 150,
+                temperature: 0.7,
+                n: 1,
+                stop: null,
+            }),
+        });
+
+        const data = await response.json();
+        return data.choices[0].text.trim();
     }
+</script>
 
-    async function searchQuestion() {
-      const question = document.getElementById("questionInput").value.trim();
-      if (!question) {
-        result.textContent = "⚠️ Please enter a question to search.";
-        return;
-      }
-
-      result.textContent = `🧠 You asked:\n${question}`;
-
-      const lowerQ = question.toLowerCase();
-      if (answerCache[lowerQ]) {
-        result.textContent += `\n\n🧠 Cached Answer:\n${answerCache[lowerQ]}`;
-        status.textContent = "⚡ From memory!";
-        return;
-      }
-
-      // special easter egg
-      if (lowerQ.includes("how old is schoolgpt")) {
-        const response = "SchoolGPT was made in April 2025 by https://github.com/yafetlikesroblox — and it's still kinda dumb but learning!";
-        answerCache[lowerQ] = response;
-        localStorage.setItem('answerCache', JSON.stringify(answerCache));
-        result.textContent += `\n\n🤖 ${response}`;
-        status.textContent = "💡 Answered!";
-        return;
-      }
-
-      const mathLike = /^[0-9 x×÷*+/=().?-]+$/i.test(question);
-      if (mathLike) {
-        result.textContent += `\n\n💡 That looks like math — try the Solve button instead.`;
-        status.textContent = "🤔 Math-like question detected.";
-        return;
-      }
-
-      status.textContent = "🔍 Asking OpenAI...";
-
-      // Fetching the answer from OpenAI
-      try {
-        const res = await fetch('https://api.openai.com/v1/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${openAiApiKey}`,
-          },
-          body: JSON.stringify({
-            model: "text-davinci-003",  // You can choose the model based on your requirements
-            prompt: question
+</body>
+</html>
 
