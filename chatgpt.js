@@ -4,7 +4,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
         const { message } = req.body;
 
-        const openaiAPIKey = process.env.OPENAI_API_KEY; // Make sure to set your API key in environment variables on Vercel
+        const openaiAPIKey = process.env.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; // Make sure to set your API key in environment variables on Vercel
 
         try {
             const response = await fetch('https://api.openai.com/v1/completions', {
