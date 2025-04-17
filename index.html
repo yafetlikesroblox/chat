@@ -136,6 +136,8 @@
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
 
+    const cache = JSON.parse(localStorage.getItem("questionCache") || "{}");
+
     scanBtn.onclick = async () => {
       result.textContent = "";
       status.textContent = "🟡 Requesting screen access...";
@@ -181,12 +183,6 @@
     };
 
     function handleInput(input) {
-      if (/how old is schoolgpt/i.test(input)) {
-        result.textContent += `\n\n📅 School GPT was made in April 2025 by https://github.com/yafetlikesroblox and it's still pretty dumb (but learning!).`;
-        status.textContent = "🧠 Custom response given.";
-        return;
-      }
-
       let cleaned = input
         .replace(/×|x|X/g, '*')
         .replace(/÷|:/g, '/')
@@ -209,45 +205,60 @@
       }
     }
 
-    function extractAnswer(parsed) {
-      if (parsed.Answer) return parsed.Answer;
-      if (parsed.Abstract) return parsed.Abstract;
-
-      const topics = parsed.RelatedTopics || [];
-      for (let t of topics) {
-        if (t.Text) return t.Text;
-        if (t.Topics && t.Topics.length && t.Topics[0].Text) return t.Topics[0].Text;
-      }
-
-      return null;
-    }
-
     async function searchQuestion() {
-      const question = document.getElementById("questionInput").value.trim();
+      const question = document.getElementById("questionInput").value.trim().toLowerCase();
       if (!question) {
         result.textContent = "⚠️ Please enter a question to search.";
         return;
       }
 
       result.textContent = `🧠 You asked:\n${question}`;
-      status.textContent = "🔍 Searching DuckDuckGo...";
+      status.textContent = "🔍 Thinking...";
+
+      if (cache[question]) {
+        result.textContent += `\n\n📦 Cached Answer:\n${cache[question]}`;
+        status.textContent = "✅ Answer loaded from memory!";
+        return;
+      }
+
+      if (question.includes("how old is schoolgpt")) {
+        const answer = "SchoolGPT was made in April 2025 by https://github.com/yafetlikesroblox — and it's still kinda dumb but learning!";
+        cache[question] = answer;
+        localStorage.setItem("questionCache", JSON.stringify(cache));
+        result.textContent += `\n\n📌 ${answer}`;
+        status.textContent = "✅ Answered!";
+        return;
+      }
 
       try {
-        const res = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json&no_redirect=1&no_html=1`);
-        const parsed = await res.json();
-        let answer = extractAnswer(parsed);
-
-        if (answer) {
-          result.textContent += `\n\n🔍 DuckDuckGo says:\n${answer}`;
-          status.textContent = "✅ Answer found!";
-        } else {
-          result.textContent += "\n\n⚠️ Couldn't find a direct answer.";
-          status.textContent = "❓ No direct answer.";
+        const wikiSearch = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(question)}`);
+        if (wikiSearch.ok) {
+          const data = await wikiSearch.json();
+          if (data.extract) {
+            cache[question] = data.extract;
+            localStorage.setItem("questionCache", JSON.stringify(cache));
+            result.textContent += `\n\n📚 Wikipedia says:\n${data.extract}`;
+            status.textContent = "✅ Found on Wikipedia!";
+            return;
+          }
         }
-      } catch (err) {
-        result.textContent += "\n\n❌ Error fetching results.";
-        status.textContent = "❌ Error: " + err.message;
-      }
+      } catch (e) {}
+
+      try {
+        const braveSearch = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json&no_redirect=1&no_html=1`);
+        const parsed = await braveSearch.json();
+        const text = parsed.AbstractText || parsed.Answer || (parsed.RelatedTopics?.[0]?.Text ?? null);
+        if (text) {
+          cache[question] = text;
+          localStorage.setItem("questionCache", JSON.stringify(cache));
+          result.textContent += `\n\n🔍 Found:\n${text}`;
+          status.textContent = "✅ Answer found!";
+          return;
+        }
+      } catch (err) {}
+
+      result.textContent += "\n\n❌ Couldn't find a direct answer.";
+      status.textContent = "❓ No result.";
     }
 
     function startListening() {
@@ -267,7 +278,7 @@
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         document.getElementById("questionInput").value = transcript;
-        result.textContent = `🗣️ Heard: "${transcript}"`;
+        result.textContent = `🗣️ Heard: \"${transcript}\"`;
         status.textContent = "✅ Voice captured. Click 'Search Answer'!";
       };
 
@@ -283,4 +294,5 @@
   </script>
 </body>
 </html>
+
 
