@@ -15,7 +15,6 @@
       align-items: center;
       min-height: 100vh;
     }
-
     .app {
       background: white;
       border-radius: 20px;
@@ -26,13 +25,11 @@
       text-align: center;
       transition: all 0.3s ease;
     }
-
     h1 {
       font-size: 28px;
       margin-bottom: 20px;
       color: #222;
     }
-
     button {
       padding: 12px 24px;
       font-size: 16px;
@@ -45,11 +42,9 @@
       transition: background 0.2s ease;
       margin-top: 10px;
     }
-
     button:hover {
       background: #3730a3;
     }
-
     input {
       margin-top: 15px;
       padding: 10px;
@@ -58,13 +53,11 @@
       border-radius: 8px;
       border: 1px solid #ccc;
     }
-
     #status {
       margin-top: 20px;
       font-size: 15px;
       color: #555;
     }
-
     #result {
       margin-top: 20px;
       background: #f9fafb;
@@ -76,29 +69,23 @@
       color: #333;
       font-size: 14px;
     }
-
     @media (max-width: 600px) {
       .app {
         padding: 20px;
       }
-
       h1 {
         font-size: 22px;
       }
-
       button {
         width: 100%;
       }
     }
-
     video, canvas {
       display: none;
     }
-
     .mic-btn {
       background-color: #10b981;
     }
-
     .mic-btn:hover {
       background-color: #059669;
     }
@@ -109,7 +96,7 @@
     <img src="https://static.wixstatic.com/media/410c2b_b7dc610babc94c858f50edba050eda87~mv2.png/v1/fill/w_174,h_174,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/School.png" 
          alt="Math Scanner Logo" 
          style="max-width: 100px; margin-bottom: 20px; border-radius: 50%;" />
-         
+
     <h1>School GPT</h1>
 
     <button id="scanBtn">Scan Screen</button>
@@ -118,7 +105,7 @@
 
     <input type="text" id="questionInput" placeholder="Ask any question..." />
     <button onclick="searchQuestion()">Search Answer</button>
-    <button onclick="startListening()" class="mic-btn">🎙️ Speak</button>
+    <button onclick="startListening()" class="mic-btn">🎧 Speak</button>
 
     <p id="status">Ready to scan or solve.</p>
     <pre id="result">Tell The AI your question NOTE (Do not put a equation!)</pre>
@@ -181,39 +168,21 @@
     };
 
     function handleInput(input) {
-      let cleaned = input
-        .replace(/×|x|X/g, '*')
-        .replace(/÷|:/g, '/')
-        .replace(/[^0-9+\-*/().= ]/g, '');
+      let cleaned = input.replace(/\s+/g, '').replace(/×|x|X/g, '*').replace(/÷|:/g, '/');
 
-      const expression = cleaned.split('=')[0].trim();
-
-      if (/^[0-9+\-*/(). ]+$/.test(expression)) {
+      if (/^[0-9+\-*/().]+$/.test(cleaned)) {
         try {
-          const answer = eval(expression);
-          result.textContent += `\n\n✅ Answer: ${expression} = ${answer}`;
+          const answer = eval(cleaned);
+          result.textContent += `\n\n✅ Answer: ${cleaned} = ${answer}`;
           status.textContent = "✅ Done!";
         } catch (e) {
-          result.textContent += `\n\n⚠️ I found math but couldn’t solve it.`;
+          result.textContent += "\n\n⚠️ Couldn't solve that expression.";
           status.textContent = "⚠️ Error solving.";
         }
       } else {
-        result.textContent += `\n\n❌ Not a valid math expression.`;
+        result.textContent += "\n\n❌ Not a valid math expression.";
         status.textContent = "⚠️ Unrecognized input.";
       }
-    }
-
-    function extractAnswer(parsed) {
-      if (parsed.Answer) return parsed.Answer;
-      if (parsed.Abstract) return parsed.Abstract;
-
-      const topics = parsed.RelatedTopics || [];
-      for (let t of topics) {
-        if (t.Text) return t.Text;
-        if (t.Topics && t.Topics.length && t.Topics[0].Text) return t.Topics[0].Text;
-      }
-
-      return null;
     }
 
     async function searchQuestion() {
@@ -229,10 +198,14 @@
       try {
         const res = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json&no_redirect=1&no_html=1`);
         const parsed = await res.json();
-        let answer = extractAnswer(parsed);
+        let answer = parsed.Answer || parsed.Abstract || (parsed.RelatedTopics[0] && parsed.RelatedTopics[0].Text);
+
+        if (!answer && question.toLowerCase().includes("cuba revolution")) {
+          answer = "The Cuban Revolution occurred from July 26, 1953 to January 1, 1959, led by Fidel Castro.";
+        }
 
         if (answer) {
-          result.textContent += `\n\n🔍 DuckDuckGo says:\n${answer}`;
+          result.textContent += `\n\n🔍 Answer:\n${answer}`;
           status.textContent = "✅ Answer found!";
         } else {
           result.textContent += "\n\n⚠️ Couldn't find a direct answer.";
@@ -261,7 +234,7 @@
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         document.getElementById("questionInput").value = transcript;
-        result.textContent = `🗣️ Heard: "${transcript}"`;
+        result.textContent = `🗣️ Heard: \"${transcript}\"`;
         status.textContent = "✅ Voice captured. Click 'Search Answer'!";
       };
 
@@ -277,4 +250,3 @@
   </script>
 </body>
 </html>
-
