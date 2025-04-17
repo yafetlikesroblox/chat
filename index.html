@@ -138,6 +138,8 @@
 
     const answerCache = JSON.parse(localStorage.getItem('answerCache') || '{}');
 
+    const openAiApiKey = "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"; // Replace with your OpenAI API key
+
     scanBtn.onclick = async () => {
       result.textContent = "";
       status.textContent = "🟡 Requesting screen access...";
@@ -251,70 +253,17 @@
         return;
       }
 
-      status.textContent = "🔍 Searching Wikipedia...";
+      status.textContent = "🔍 Asking OpenAI...";
+
+      // Fetching the answer from OpenAI
       try {
-        const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(question)}`);
-        const data = await res.json();
-        if (data.extract) {
-          answerCache[lowerQ] = data.extract;
-          localStorage.setItem('answerCache', JSON.stringify(answerCache));
-          result.textContent += `\n\n🌐 Wikipedia says:\n${data.extract}`;
-          status.textContent = "✅ Found on Wikipedia!";
-          return;
-        }
-      } catch (e) {}
-
-      status.textContent = "🔍 Searching DuckDuckGo...";
-      try {
-        const res = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json&no_redirect=1&no_html=1`);
-        const parsed = await res.json();
-        let answer = extractAnswer(parsed);
-        if (answer) {
-          answerCache[lowerQ] = answer;
-          localStorage.setItem('answerCache', JSON.stringify(answerCache));
-          result.textContent += `\n\n🔍 DuckDuckGo says:\n${answer}`;
-          status.textContent = "✅ Answer found!";
-        } else {
-          result.textContent += "\n\n⚠️ Couldn't find a direct answer.";
-          status.textContent = "❓ No direct answer.";
-        }
-      } catch (err) {
-        result.textContent += "\n\n❌ Error fetching results.";
-        status.textContent = "❌ Error: " + err.message;
-      }
-    }
-
-    function startListening() {
-      if (!('webkitSpeechRecognition' in window)) {
-        alert("🎤 Your browser doesn't support speech recognition. Try using Google Chrome.");
-        return;
-      }
-
-      const recognition = new webkitSpeechRecognition();
-      recognition.lang = "en-US";
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
-      status.textContent = "🎤 Listening...";
-      recognition.start();
-
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        document.getElementById("questionInput").value = transcript;
-        result.textContent = `🗣️ Heard: "${transcript}"`;
-        status.textContent = "✅ Voice captured. Click 'Search Answer'!";
-      };
-
-      recognition.onerror = (event) => {
-        status.textContent = "❌ Voice error: " + event.error;
-        result.textContent = "⚠️ Couldn't hear anything useful.";
-      };
-
-      recognition.onend = () => {
-        status.textContent += " (Stopped listening)";
-      };
-    }
-  </script>
-</body>
-</html>
+        const res = await fetch('https://api.openai.com/v1/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openAiApiKey}`,
+          },
+          body: JSON.stringify({
+            model: "text-davinci-003",  // You can choose the model based on your requirements
+            prompt: question
 
