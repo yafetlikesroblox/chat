@@ -2,7 +2,7 @@
 export default async function handler(req, res) {
     if (req.method === 'POST') {
         const { message } = req.body;
-        const openaiAPIKey = process.env.OPENAI_API_KEY;  // Ensure this environment variable is set in Vercel
+        const openaiAPIKey = process.env.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;  // Ensure this environment variable is set in Vercel
 
         if (!openaiAPIKey) {
             return res.status(500).json({ error: "API Key is missing" });
