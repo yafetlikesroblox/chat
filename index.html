@@ -109,7 +109,7 @@
     <img src="https://static.wixstatic.com/media/410c2b_b7dc610babc94c858f50edba050eda87~mv2.png/v1/fill/w_174,h_174,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/School.png" 
          alt="Math Scanner Logo" 
          style="max-width: 100px; margin-bottom: 20px; border-radius: 50%;" />
-         
+
     <h1>School GPT</h1>
 
     <button id="scanBtn">Scan Screen</button>
@@ -136,7 +136,7 @@
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
 
-    const cache = JSON.parse(localStorage.getItem("questionCache") || "{}");
+    const answerCache = JSON.parse(localStorage.getItem('answerCache') || '{}');
 
     scanBtn.onclick = async () => {
       result.textContent = "";
@@ -195,70 +195,93 @@
           const answer = eval(expression);
           result.textContent += `\n\n✅ Answer: ${expression} = ${answer}`;
           status.textContent = "✅ Done!";
+          return;
         } catch (e) {
           result.textContent += `\n\n⚠️ I found math but couldn’t solve it.`;
           status.textContent = "⚠️ Error solving.";
+          return;
         }
-      } else {
-        result.textContent += `\n\n❌ Not a valid math expression.`;
-        status.textContent = "⚠️ Unrecognized input.";
       }
+
+      result.textContent += `\n\n❌ Not a valid math expression.`;
+      status.textContent = "⚠️ Unrecognized input.";
+    }
+
+    function extractAnswer(parsed) {
+      if (parsed.Answer) return parsed.Answer;
+      if (parsed.Abstract) return parsed.Abstract;
+      const topics = parsed.RelatedTopics || [];
+      for (let t of topics) {
+        if (t.Text) return t.Text;
+        if (t.Topics && t.Topics.length && t.Topics[0].Text) return t.Topics[0].Text;
+      }
+      return null;
     }
 
     async function searchQuestion() {
-      const question = document.getElementById("questionInput").value.trim().toLowerCase();
+      const question = document.getElementById("questionInput").value.trim();
       if (!question) {
         result.textContent = "⚠️ Please enter a question to search.";
         return;
       }
 
       result.textContent = `🧠 You asked:\n${question}`;
-      status.textContent = "🔍 Thinking...";
 
-      if (cache[question]) {
-        result.textContent += `\n\n📦 Cached Answer:\n${cache[question]}`;
-        status.textContent = "✅ Answer loaded from memory!";
+      const lowerQ = question.toLowerCase();
+      if (answerCache[lowerQ]) {
+        result.textContent += `\n\n🧠 Cached Answer:\n${answerCache[lowerQ]}`;
+        status.textContent = "⚡ From memory!";
         return;
       }
 
-      if (question.includes("how old is schoolgpt")) {
-        const answer = "SchoolGPT was made in April 2025 by https://github.com/yafetlikesroblox — and it's still kinda dumb but learning!";
-        cache[question] = answer;
-        localStorage.setItem("questionCache", JSON.stringify(cache));
-        result.textContent += `\n\n📌 ${answer}`;
-        status.textContent = "✅ Answered!";
+      // special easter egg
+      if (lowerQ.includes("how old is schoolgpt")) {
+        const response = "SchoolGPT was made in April 2025 by https://github.com/yafetlikesroblox — and it's still kinda dumb but learning!";
+        answerCache[lowerQ] = response;
+        localStorage.setItem('answerCache', JSON.stringify(answerCache));
+        result.textContent += `\n\n🤖 ${response}`;
+        status.textContent = "💡 Answered!";
         return;
       }
 
+      const mathLike = /^[0-9 x×÷*+/=().?-]+$/i.test(question);
+      if (mathLike) {
+        result.textContent += `\n\n💡 That looks like math — try the Solve button instead.`;
+        status.textContent = "🤔 Math-like question detected.";
+        return;
+      }
+
+      status.textContent = "🔍 Searching Wikipedia...";
       try {
-        const wikiSearch = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(question)}`);
-        if (wikiSearch.ok) {
-          const data = await wikiSearch.json();
-          if (data.extract) {
-            cache[question] = data.extract;
-            localStorage.setItem("questionCache", JSON.stringify(cache));
-            result.textContent += `\n\n📚 Wikipedia says:\n${data.extract}`;
-            status.textContent = "✅ Found on Wikipedia!";
-            return;
-          }
+        const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(question)}`);
+        const data = await res.json();
+        if (data.extract) {
+          answerCache[lowerQ] = data.extract;
+          localStorage.setItem('answerCache', JSON.stringify(answerCache));
+          result.textContent += `\n\n🌐 Wikipedia says:\n${data.extract}`;
+          status.textContent = "✅ Found on Wikipedia!";
+          return;
         }
       } catch (e) {}
 
+      status.textContent = "🔍 Searching DuckDuckGo...";
       try {
-        const braveSearch = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json&no_redirect=1&no_html=1`);
-        const parsed = await braveSearch.json();
-        const text = parsed.AbstractText || parsed.Answer || (parsed.RelatedTopics?.[0]?.Text ?? null);
-        if (text) {
-          cache[question] = text;
-          localStorage.setItem("questionCache", JSON.stringify(cache));
-          result.textContent += `\n\n🔍 Found:\n${text}`;
+        const res = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(question)}&format=json&no_redirect=1&no_html=1`);
+        const parsed = await res.json();
+        let answer = extractAnswer(parsed);
+        if (answer) {
+          answerCache[lowerQ] = answer;
+          localStorage.setItem('answerCache', JSON.stringify(answerCache));
+          result.textContent += `\n\n🔍 DuckDuckGo says:\n${answer}`;
           status.textContent = "✅ Answer found!";
-          return;
+        } else {
+          result.textContent += "\n\n⚠️ Couldn't find a direct answer.";
+          status.textContent = "❓ No direct answer.";
         }
-      } catch (err) {}
-
-      result.textContent += "\n\n❌ Couldn't find a direct answer.";
-      status.textContent = "❓ No result.";
+      } catch (err) {
+        result.textContent += "\n\n❌ Error fetching results.";
+        status.textContent = "❌ Error: " + err.message;
+      }
     }
 
     function startListening() {
@@ -278,7 +301,7 @@
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         document.getElementById("questionInput").value = transcript;
-        result.textContent = `🗣️ Heard: \"${transcript}\"`;
+        result.textContent = `🗣️ Heard: "${transcript}"`;
         status.textContent = "✅ Voice captured. Click 'Search Answer'!";
       };
 
@@ -294,5 +317,4 @@
   </script>
 </body>
 </html>
-
 
